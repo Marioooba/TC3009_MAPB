@@ -90,25 +90,33 @@ SISTEMA = (
 
 @app.get("/api/health")
 def health():
-    """Tres preguntas: ¿vivo yo?, ¿vive Ollama?, ¿esta mi modelo?
+    try:
+        r = requests.get(f"{OLLAMA}/api/tags", timeout=5)
+        r.raise_for_status()
+        instalados = [m["name"] for m in r.json().get("models", [])]
+    except requests.RequestException as e:
+        return jsonify({
+            "status": "degradado",
+            "modelo": MODELO,
+            "detalle": f"Ollama no responde en {OLLAMA}: {str(e)[:100]}",
+            "arreglo": "En la instancia:  ollama serve",
+        })
 
-    Un chequeo que solo diga "ok" no sirve: cuando algo falla, lo que necesitas
-    es saber CUAL de las tres cosas, y que hacer.
-    """
-    # COMPLETA 1 — preguntale a Ollama.
-    #
-    # GET {OLLAMA}/api/tags devuelve {"models": [{"name": "...", ...}, ...]}.
-    #
-    # Tres respuestas posibles, y las tres importan:
-    #
-    #   · Ollama no contesta      -> "degradado", y dile que corra  ollama serve
-    #   · contesta pero falta el
-    #     modelo de MODELO        -> "degradado", lista los que SI tiene, y
-    #                                dile que corra  ollama pull MODELO
-    #   · todo bien               -> "ok"
-    #
-    # Pon un timeout corto (5s): esto es un chequeo de salud, no una pregunta
-    # al modelo. Si Ollama esta caido tiene que decirlo rapido.
+    if MODELO not in instalados:
+        return jsonify({
+            "status": "degradado",
+            "modelo": MODELO,
+            "detalle": f"'{MODELO}' no esta instalado",
+            "instalados": instalados,
+            "arreglo": f"En la instancia:  ollama pull {MODELO}",
+        })
+
+    return jsonify({
+        "status": "ok",
+        "modelo": MODELO,
+        "max_tokens": MAX_TOKENS,
+        "keep_alive": KEEP_ALIVE,
+    })
     return jsonify({"status": "sin escribir", "modelo": MODELO})
 
 
