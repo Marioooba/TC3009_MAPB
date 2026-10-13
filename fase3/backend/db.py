@@ -72,18 +72,13 @@ def crear_conversacion(titulo, modelo):
 
 def guardar_mensaje(conversacion_id, rol, contenido, tokens=None):
     """Añade un mensaje a una conversacion."""
-    # COMPLETA 1 — guarda el mensaje.
-    #
-    # Un INSERT en 'mensaje' con las cuatro columnas:
-    #
-    #     conversacion_id, rol, contenido, tokens
-    #
-    # Copia la forma de crear_conversacion de aqui arriba. Este no necesita
-    # RETURNING: no vas a usar el id del mensaje para nada.
-    #
-    # Los cuatro valores van en la tupla, con %s en el SQL. NUNCA con un
-    # f-string: lo que escribe un usuario en el chat no puede acabar siendo
-    # interpretado como SQL.
+
+    with pool.connection() as con:
+        con.execute(
+            "INSERT INTO mensaje (conversacion_id, rol, contenido, tokens)"
+            " VALUES (%s, %s, %s, %s)",
+            (conversacion_id, rol, contenido, tokens)
+        )
     raise NotImplementedError("COMPLETA 1: falta el INSERT en backend/db.py")
 
 
@@ -95,19 +90,13 @@ def leer_mensajes(conversacion_id):
         [{"role": "user", "content": "hola"},
          {"role": "assistant", "content": "que tal"}]
     """
-    # COMPLETA 2 — lee la conversacion.
-    #
-    # SELECT de 'rol' y 'contenido' en la tabla mensaje, filtrando por
-    # conversacion_id, y ORDER BY id.
-    #
-    # El ORDER BY no es opcional: sin el, PostgreSQL puede devolverte las
-    # filas en cualquier orden, y una conversacion desordenada le da al modelo
-    # una historia que nunca ocurrio. Hoy casi siempre saldria bien por suerte;
-    # el dia que no, el sintoma no se parece en nada a la causa.
-    #
-    # Y OJO AL IDIOMA. Las columnas se llaman 'rol' y 'contenido' porque son
-    # tuyas; las claves tienen que ser 'role' y 'content' porque son del API de
-    # Ollama. La traduccion ocurre aqui, en la frontera, y en un solo sitio.
+
+    with pool.connection() as con:
+        filas = con.execute(
+            "SELECT rol, contenido FROM mensaje WHERE conversacion_id = %s ORDER BY id",
+            (conversacion_id,),
+        ).fetchall()
+    return [{"role":r, "content":c} for r, c in filas]
     raise NotImplementedError("COMPLETA 2: falta el SELECT en backend/db.py")
 
 
